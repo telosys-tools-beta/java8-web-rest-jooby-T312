@@ -1,0 +1,329 @@
+##
+#set( $uncapitalizedEntityName = $fn.uncapitalize($entity.name) )
+## --- Primary Key arguments by getters, e.g. "review.getCustomerCode(), review.getBookId()"
+## #set( $pkElementsGetters = $fn.argumentsListWithGetter($uncapitalizedEntityName, $entity.keyAttributes) )
+## --- Primary Key arguments, e.g. "customerCode, bookId"
+#set( $pkElementsVariables = $fn.argumentsList($entity.keyAttributes) )
+##
+#set( $entityClass = "${entity.name}Record" )
+#set( $entityListItemClass = "${entity.name}ListItem" )
+##
+## --- Pk arguments
+#set( $pkArgs = "" )
+#foreach( $attribute in $entity.keyAttributes )
+#if( $foreach.count > 1 )
+#set( $pkArgs = "${pkArgs}, " )
+#end
+#set( $pkArgs = "${pkArgs}${attribute.name}" )
+#end
+##
+## --- Primary Key request path, e.g. "{customerCode}/{bookId}"
+#set( $pkPath = "" )
+#foreach( $attribute in $entity.keyAttributes )
+#if( $foreach.count > 1 )
+#set( $pkPath = "${pkPath}/" )
+#end
+#set( $pkPath = "${pkPath}{${attribute.name}}" )
+#end
+##
+## --- Primary Key Path Variables, e.g. "@PathParam("customerCode") String customerCode, @PathParam("bookId") Integer bookId"
+#set( $pkPathVariables = "" )
+#foreach( $attribute in $entity.keyAttributes )
+#if( $foreach.count > 1 )
+#set( $pkPathVariables = "${pkPathVariables}, " )
+#end
+## #set( $pkPathVariables = "${pkPathVariables}@PathParam(${QUOT}${attribute.name}${QUOT}) $attribute.type $attribute.name" )
+#set( $pkPathVariables = "${pkPathVariables} $attribute.type $attribute.name" )
+#end
+##
+## --- Primary Key with '+' , e.g. "customerCode+bookId"
+#set( $pkPlus = "" )
+#foreach( $attribute in $entity.keyAttributes )
+#if( $foreach.count > 1 )
+#set( $pkPlus = "${pkPlus}+$QUOT/$QUOT+" )
+#end
+#set( $pkPlus = "${pkPlus}${attribute.name}" )
+#end
+##
+## --- Referenced entities (e.g. "Book", "Country", "Author", ... )
+#set( $referencedEntities = $entity.referencedEntityTypes() )## All referenced entities (PK and NON PK)
+## #set( $referencedNonPKEntities = $entity.referencedEntityTypes($entity.nonKeyAttributes) )## Entities referenced by NON PK fields
+## -----------------------------------------------------------------------------------------------------------------------------
+#parse("include/java_header.vm")
+
+package ${target.javaPackageFromFolder($SRC)};
+
+import java.util.LinkedList;
+import java.util.List;
+
+//--- Jooby
+import org.jooby.Result;
+import org.jooby.Results;
+import org.jooby.Status;
+import org.jooby.mvc.Body;
+import org.jooby.mvc.DELETE;
+import org.jooby.mvc.GET;
+import org.jooby.mvc.POST;
+import org.jooby.mvc.PUT;
+import org.jooby.mvc.Path;
+
+//--- Entities
+import ${ROOT_PKG}.data.record.${entityClass};
+import ${ROOT_PKG}.data.record.listitem.${entityListItemClass};
+
+//--- Services 
+import ${ROOT_PKG}.persistence.${entity.name}Persistence;
+import ${ROOT_PKG}.persistence.commons.PersistenceServiceProvider;
+import ${ROOT_PKG}.web.rest.commons.AbstractResourceController;
+
+/**
+ * REST controller for '${entity.name}' management.
+ */
+@Path("/${uncapitalizedEntityName}")
+public class ${entity.name}Controller extends AbstractResourceController {
+
+	private ${entity.name}Persistence ${uncapitalizedEntityName}Service = PersistenceServiceProvider.getService(${entity.name}Persistence.class);
+
+	/**
+	 * Constructor
+	 */
+	public ${entity.name}Controller() {
+		super();
+		log("Constructor.");
+	}
+
+	/**
+	 * Get all ${uncapitalizedEntityName} entities.
+	 * @return list with all entities found
+	 */
+	@GET
+	@Path("/")
+	public List<${entityClass}> getAll() {
+		log(">>> GET : findAll()...");
+		return ${uncapitalizedEntityName}Service.findAll();
+	}
+
+	/**
+	 * Retrieves a ${uncapitalizedEntityName} using the given id.
+#foreach( $attribute in $entity.keyAttributes )
+	 * @param ${attribute.name} ${attribute.name}
+#end
+	 * @return 200 + body if found, 404 if not found 
+	 */
+	@GET
+	@Path("${pkPath}")
+/**
+	@Produces({MediaType.APPLICATION_JSON})
+	public Response getById(${pkPathVariables}) {
+		log("findById("+${pkPlus}+")...");
+		${entityClass} record = ${uncapitalizedEntityName}Service.findById(${pkElementsVariables});
+		if ( record != null ) {
+			return Response.ok(record).build();
+		}
+		else {
+			return Response.status(Status.NOT_FOUND).build();
+		}
+	}
+**/
+	public Result getOneById(${pkPathVariables}) { // method param name = Path annotation name  
+		// if invalid parameter (e.g. not a number) : status 400 returned by Jooby
+		log(">>> GET : findById("+${pkPlus}+")...");
+		${entityClass} record = ${uncapitalizedEntityName}Service.findById(${pkElementsVariables});
+		if ( record != null ) {
+			// FOUND
+			return Results.with(record, Status.OK);
+		}
+		else {
+			// NOT FOUND
+			// return Results.with(Status.NOT_FOUND); // Without response body
+			return Results.with(RESPONSE_BODY_NOT_FOUND, Status.NOT_FOUND); // With response body
+		}
+
+	}
+
+	/**
+	 * Creates a new ${uncapitalizedEntityName}.
+	 * @param ${uncapitalizedEntityName} ${uncapitalizedEntityName}
+	 * @return 201 with body if created, 409 conflict if duplicate key 
+	 */	
+	@POST
+/**
+	@Consumes({MediaType.APPLICATION_JSON})
+	@Produces({MediaType.APPLICATION_JSON})
+	public Response create(${entityClass} ${uncapitalizedEntityName}) {
+		log("create()...");
+		if ( ${uncapitalizedEntityName}Service.exists(${uncapitalizedEntityName}) ) {
+			log("create() : already exists -> conflict");
+			return Response.status(Status.CONFLICT).build();
+		}
+		else {
+			log("create() : doesn't exist -> create");
+			${entityClass} record = ${uncapitalizedEntityName}Service.create(${uncapitalizedEntityName});
+			return Response.status(Status.CREATED).entity(record).build();
+		}
+	}
+**/
+	public Result create(@Body ${entityClass} ${uncapitalizedEntityName}) {
+		log(">>> POST : create() : " + ${uncapitalizedEntityName});
+		if ( ${uncapitalizedEntityName}Service.exists(${uncapitalizedEntityName}) ) {
+			log("create() : already exists -> conflict");
+			//return Results.with(Status.CONFLICT); // Without response body
+			return Results.with(RESPONSE_BODY_ALREADY_EXIST, Status.CONFLICT); // With response body
+		} else {
+			log("create() : doesn't exist -> create");
+			${entityClass} record = ${uncapitalizedEntityName}Service.create(${uncapitalizedEntityName});
+			return Results.with(record, Status.CREATED);
+		}
+	}
+
+	/**
+	 * Updates the ${uncapitalizedEntityName} identified by the given id
+	 * @param ${uncapitalizedEntityName} ${uncapitalizedEntityName} entity
+#foreach( $attribute in $entity.keyAttributes )
+	 * @param ${attribute.name} ${attribute.name} 
+#end
+	 * @return 200 if found and updated, 404 if not found 
+	 */	
+	@PUT
+	@Path("${pkPath}")
+/**
+	@Consumes({MediaType.APPLICATION_JSON})
+	@Produces({MediaType.APPLICATION_JSON})
+	public Response update(${entityClass} ${uncapitalizedEntityName}, ${pkPathVariables}) {
+		log("update()...");
+		// force the id (use the id provided by the URL)
+#foreach( $attribute in $entity.keyAttributes )
+		${uncapitalizedEntityName}.${attribute.setter}( $attribute.name );
+#end
+		boolean updated = ${uncapitalizedEntityName}Service.update(${uncapitalizedEntityName});
+		if ( updated ) {
+			// Actually updated (found and updated) => 200 OK
+			return Response.status(Status.OK).build();
+		}
+		else {
+			// Not updated with no error => 404 not found
+			return Response.status(Status.NOT_FOUND).build();
+		}
+	}
+**/
+	public Result update(@Body ${entityClass} ${uncapitalizedEntityName}, ${pkPathVariables}) {
+		log(">>> PUT : update() " );
+		// force the id (use the id provided by the URL)
+#foreach( $attribute in $entity.keyAttributes )
+		${uncapitalizedEntityName}.${attribute.setter}( $attribute.name );
+#end
+		boolean updated = ${uncapitalizedEntityName}Service.update(${uncapitalizedEntityName});
+		if ( updated ) {
+			// Actually updated (found and updated) => 200 OK
+			// return Results.with(Status.OK); // Without response body
+			return Results.with(RESPONSE_BODY_UPDATED, Status.OK); // With response body
+		}
+		else {
+			// Not updated with no error => 404 not found
+			// return Results.with(Status.NOT_FOUND); // Without response body
+			return Results.with(RESPONSE_BODY_NOT_FOUND, Status.NOT_FOUND); // With response body
+		}
+	}
+
+	/**
+	 * Save (create or update) the given ${uncapitalizedEntityName}.
+	 * @param ${uncapitalizedEntityName} ${uncapitalizedEntityName} entity
+	 * @return 200 if found and updated, 201 if not found and created
+	 */	
+	@PUT
+/**
+	@Consumes({MediaType.APPLICATION_JSON})
+	@Produces({MediaType.APPLICATION_JSON})
+	public Response save(${entityClass} ${uncapitalizedEntityName}) {
+		log("save()...");
+		Status status = Status.OK ; // 200 OK
+		if ( ! ${uncapitalizedEntityName}Service.exists(${uncapitalizedEntityName}) ) {
+			status = Status.CREATED ; // 201 CREATED
+		}
+		${entityClass} record = ${uncapitalizedEntityName}Service.save(${uncapitalizedEntityName});
+		// Response ( code 200 or 201 )
+		return Response.status(status).entity(record).build();
+	}
+**/
+	public Result save(@Body ${entityClass} ${uncapitalizedEntityName}) {
+		log(">>> PUT : save() : " + ${uncapitalizedEntityName});
+		Status status = Status.OK ; // 200 OK
+		if ( ! ${uncapitalizedEntityName}Service.exists(${uncapitalizedEntityName}) ) {
+			status = Status.CREATED ; // 201 CREATED
+		}
+		${entityClass} record = ${uncapitalizedEntityName}Service.save(${uncapitalizedEntityName});
+		// Response ( code 200 or 201 )
+		return Results.with(record, status);
+	}
+
+	/**
+	 * Delete ${uncapitalizedEntityName} by id.
+#foreach( $attribute in $entity.keyAttributes )
+	 * @param ${attribute.name} ${attribute.name}
+#end
+	 * @return 204 if found and deleted, 404 if not found
+	 */
+	@DELETE
+	@Path("${pkPath}")
+/**
+	//@Consumes({MediaType.APPLICATION_JSON})
+	// public void delete(${pkPathVariables}) {
+	public Response delete(${pkPathVariables}) {
+		log("delete("+${pkPlus}+")...");
+		// ${uncapitalizedEntityName}Service.deleteById(${pkArgs});
+		boolean deleted = ${uncapitalizedEntityName}Service.deleteById(${pkArgs});
+		if ( deleted ) {
+			// Actually deleted (found and deleted) => 204 "No Content" because no body in the response 
+			return Response.status(Status.NO_CONTENT).build();
+		}
+		else {
+			// Not deleted with no error => 404 "Not found"
+			return Response.status(Status.NOT_FOUND).build();
+		}
+	}
+**/
+	public Result delete(${pkPathVariables}) {
+		log(">>> DELETE : delete(" + ${pkPlus} + ")...");
+		boolean deleted = ${uncapitalizedEntityName}Service.deleteById(${pkArgs});
+		if (deleted) {
+			// Actually deleted (found and deleted) => 204 "No Content" 
+			// because no body in the response
+			return Results.with(Status.NO_CONTENT);
+		} else {
+			// Not deleted with no error => 404 "Not found"
+			return Results.with(Status.NOT_FOUND);
+		}
+	}
+
+
+/**
+	@GET
+	@Path("/${uncapitalizedEntityName}s-list-items")
+	@Produces({MediaType.APPLICATION_JSON})
+	public List<${entityListItemClass}> listItems() {
+		log("listItems()...");
+		List<${entityClass}> list = ${uncapitalizedEntityName}Service.findAll();
+		List<${entityListItemClass}> items = new LinkedList<${entityListItemClass}>();
+		for ( ${entityClass} ${uncapitalizedEntityName} : list ) {
+			items.add(new ${entityListItemClass}( ${uncapitalizedEntityName} ) );
+		}
+		return items;
+	}
+**/
+	/**
+	 * Get all entities in "list-item" format
+	 * @return 
+	 */
+	@GET
+	@Path("/${uncapitalizedEntityName}-items")
+	public List<${entityListItemClass}> getListItems() {
+		log(">>> GET : /${uncapitalizedEntityName}-items ...");
+		List<${entityClass}> list = ${uncapitalizedEntityName}Service.findAll();
+		// Convert to ${entityListItemClass}
+		List<${entityListItemClass}> items = new LinkedList<${entityListItemClass}>();
+		for ( ${entityClass} ${uncapitalizedEntityName} : list ) {
+			items.add(new ${entityListItemClass}( ${uncapitalizedEntityName} ) );
+		}
+		return items;
+	}
+}

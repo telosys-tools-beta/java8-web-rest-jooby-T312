@@ -1,0 +1,40 @@
+#parse("include/java_header.vm")
+
+package ${target.javaPackageFromFolder($SRC)};
+
+import java.util.logging.Logger;
+
+/**
+ * Abstract REST resource controller providing a logger <br>
+ *  
+ * @author Telosys
+ *
+ */
+public abstract class AbstractResourceController {
+
+	protected static final String RESPONSE_BODY_ALREADY_EXIST = "Already exist" ;
+	protected static final String RESPONSE_BODY_NOT_FOUND     = "Not found" ;
+	protected static final String RESPONSE_BODY_UPDATED       = "Updated";
+	protected static final String RESPONSE_BODY_DELETED       = "Deleted";
+
+	private final Logger logger ;
+	
+	/**
+	 * Constructor
+	 */
+	public AbstractResourceController() {
+		super();
+		this.logger = Logger.getLogger(this.getClass().getCanonicalName()); 
+
+		this.logger.setLevel(LoggerLevel.LEVEL);
+	}
+
+	/**
+	 * Log the given message
+	 * @param msg
+	 */
+	protected void log(String msg) {
+		logger.info(msg);
+	}
+
+}

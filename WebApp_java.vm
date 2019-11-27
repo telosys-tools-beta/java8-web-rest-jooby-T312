@@ -1,0 +1,61 @@
+#parse("include/java_header.vm")
+
+package ${target.javaPackageFromFolder($SRC)};
+
+//--- Jooby
+import org.jooby.Jooby;
+import org.jooby.json.Jackson;
+
+#using("REST_SERVER_PORT")
+
+## //--- Controllers
+## #foreach( $entity in $selectedEntities )
+## import ${ROOT_PKG}.web.rest.controllers.${entity.name}Controller;
+## #end
+
+public class WebApp extends Jooby {
+	
+	// Jooby web server configuration 
+	{
+	    port( ${REST_SERVER_PORT} );  // http://localhost:8081/
+	    //securePort( 8443 );  // https://localhost:8443/
+	}
+	
+	// Jooby lifecycle events
+	{
+		onStart(() -> {
+			System.out.println("Starting Jooby app");
+		});
+
+		onStarted(() -> {
+			System.out.println("Jooby app started");
+		});
+
+		onStop(() -> {
+			System.out.println("Stopping app");
+		});
+
+	}
+	
+	// Jooby application modules
+	{	
+		use(new Jackson()); // Automatically switch to JSON ( Content-Type	application/json;charset=utf-8 )
+	}
+	
+	// Jooby REST controllers 
+	{
+#foreach( $entity in $selectedEntities )
+		use(${ROOT_PKG}.web.rest.controllers.${entity.name}Controller.class);
+#end
+	}
+	
+    /**
+     * Java application entry point <br>
+     * Starts the web server embedded in Jooby
+     * @param args
+     */
+    public static void main(String[] args) {
+    	
+        run(WebApp::new, args);
+    }
+}
