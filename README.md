@@ -1,6 +1,6 @@
 # Telosys templates bundle for Java REST web application
 
-A [Telosys](http://telosys.org) bundle to generate a basic REST web application 
+A [Telosys](http://www.telosys.org) bundle to generate a basic REST web application 
 with CRUD operations (Create, Read, Update, Delete) .
 
 This bundle generates code for [Jooby](https://jooby.io/) web framework
@@ -12,12 +12,21 @@ This bundle generates code for [Jooby](https://jooby.io/) web framework
 
 ## Dependencies
 
-This bundle generates code only for the web REST components.
+This bundle generates code only for web REST components.
 
 Other bundles are needed to build a complete application
 
 - Java commons components
 - Java persistence components
+
+## Variables
+
+This bundle uses the following variables :
+
+- `REST_SERVER_PORT   ( http server port, e.g. 8080 )`  
+
+These variables must be defined before launching code generation
+
 
 
 ## License
